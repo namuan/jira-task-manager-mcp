@@ -1,0 +1,20 @@
+# ignore all root items
+/*
+__pycache__/
+
+# unignore folders
+!jira_tm/
+!assets/
+
+# unignore files
+!.gitignore
+!README.md
+!pyproject.toml
+!uv.lock
+!Makefile
+!.pre-commit-config.yaml
+!.editorconfig
+!LICENSE
+!tox.ini
+!.env.example
+!*.md
