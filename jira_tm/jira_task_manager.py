@@ -22,6 +22,7 @@ ISSUE_TYPE_TASK = "Task"
 ISSUE_TYPE_SUBTASK = "Sub-task"
 
 
+# Exception Classes
 class TaskNotFoundError(Exception):
     def __init__(self, project_name, title):
         self.project_name = project_name
@@ -43,6 +44,9 @@ class ChecklistItemNotFoundError(Exception):
 
 
 class JiraTaskManager:
+    # ============================================================================
+    # Initialisation and Connection
+    # ============================================================================
     def __init__(self):
         self.server_url = JIRA_SERVER_URL
         self.auth = HTTPBasicAuth(JIRA_USERNAME, JIRA_API_TOKEN)
@@ -78,35 +82,9 @@ class JiraTaskManager:
             return response.json()
         return None
 
-    def _search_issues(self, jql, fields=None, max_results=50):
-        """Search for issues using JQL."""
-        data = {
-            "jql": jql,
-            "maxResults": max_results,
-            "fields": fields or ["summary", "description", "status", "issuetype"],
-        }
-
-        result = self._make_request("POST", "/search", data=data)
-        return result.get("issues", []) if result else []
-
-    def _get_transitions(self, issue_key):
-        """Get available transitions for an issue."""
-        result = self._make_request("GET", f"/issue/{issue_key}/transitions")
-        return result.get("transitions", []) if result else []
-
-    def _transition_issue(self, issue_key, transition_id):
-        """Transition an issue to a new status."""
-        data = {"transition": {"id": transition_id}}
-        return self._make_request("POST", f"/issue/{issue_key}/transitions", data=data)
-
-    def _find_transition_id(self, issue_key, target_status):
-        """Find transition ID for target status."""
-        transitions = self._get_transitions(issue_key)
-        for transition in transitions:
-            if transition["to"]["name"] == target_status:
-                return transition["id"]
-        return None
-
+    # ============================================================================
+    # Core Task Operations
+    # ============================================================================
     def add_task(self, project_name, title, description):
         """Create a new task/issue in the project."""
         data = {
@@ -137,67 +115,6 @@ class JiraTaskManager:
             return issue, f"Next available task: {issue['fields']['summary']} - {self._get_description_text(issue)}"
 
         return None, f"No available tasks found in '{project_name}'."
-
-    def _get_description_text(self, issue):
-        """Extract plain text from JIRA description format."""
-        description = issue["fields"].get("description")
-        if not description:
-            return ""
-
-        # Extract text from Atlassian Document Format
-        text_parts = []
-        if "content" in description:
-            for content_block in description["content"]:
-                if content_block.get("type") == "paragraph" and "content" in content_block:
-                    for text_node in content_block["content"]:
-                        if text_node.get("type") == "text":
-                            text_parts.append(text_node.get("text", ""))
-
-        return " ".join(text_parts)
-
-    def mark_as_in_progress(self, project_name, title):
-        """Transition task to 'In Progress' status."""
-        # Find the issue by title
-        jql = f'project = {self.project_key} AND summary ~ "{title}"'
-        issues = self._search_issues(jql, max_results=1)
-
-        if not issues:
-            raise TaskNotFoundError(project_name, title)
-
-        issue = issues[0]
-        issue_key = issue["key"]
-
-        # Find transition ID for "In Progress"
-        transition_id = self._find_transition_id(issue_key, STATUS_IN_PROGRESS)
-        if not transition_id:
-            return issue, f"Cannot transition task '{title}' to In Progress (transition not available)"
-
-        # Perform transition
-        self._transition_issue(issue_key, transition_id)
-
-        return issue, f"Task '{title}' in project '{project_name}' marked as in progress."
-
-    def mark_as_completed(self, project_name, title):
-        """Transition task to 'Done' status."""
-        # Find the issue by title
-        jql = f'project = {self.project_key} AND summary ~ "{title}"'
-        issues = self._search_issues(jql, max_results=1)
-
-        if not issues:
-            raise TaskNotFoundError(project_name, title)
-
-        issue = issues[0]
-        issue_key = issue["key"]
-
-        # Find transition ID for "Done"
-        transition_id = self._find_transition_id(issue_key, STATUS_DONE)
-        if not transition_id:
-            return issue, f"Cannot transition task '{title}' to Done (transition not available)"
-
-        # Perform transition
-        self._transition_issue(issue_key, transition_id)
-
-        return issue, f"Task '{title}' in project '{project_name}' has been completed."
 
     def update_task_description(self, project_name, title, description):
         """Update the task's description."""
@@ -236,6 +153,77 @@ class JiraTaskManager:
 
         return issue, f"Description updated for task '{title}' in project '{project_name}'."
 
+    # ============================================================================
+    # Task Status Management
+    # ============================================================================
+    def mark_as_in_progress(self, project_name, title):
+        """Transition task to 'In Progress' status."""
+        return self._set_task_status(project_name, title, STATUS_IN_PROGRESS)
+
+    def mark_as_completed(self, project_name, title):
+        """Transition task to 'Done' status."""
+        return self._set_task_status(project_name, title, STATUS_DONE)
+
+    def get_task_status(self, project_name, title):
+        """Get the current status of a task."""
+        jql = f'project = {self.project_key} AND summary ~ "{title}"'
+        issues = self._search_issues(jql, max_results=1)
+
+        if not issues:
+            raise TaskNotFoundError(project_name, title)
+
+        issue = issues[0]
+        status = issue["fields"]["status"]["name"]
+
+        return issue, f"Task '{title}' status: {status}"
+
+    def set_task_status(self, project_name, title, target_status):
+        """Set a specific status for a task."""
+        return self._set_task_status(project_name, title, target_status)
+
+    def _set_task_status(self, project_name, title, target_status):
+        """Internal method to set task status."""
+        # Find the issue by title
+        jql = f'project = {self.project_key} AND summary ~ "{title}"'
+        issues = self._search_issues(jql, max_results=1)
+
+        if not issues:
+            raise TaskNotFoundError(project_name, title)
+
+        issue = issues[0]
+        issue_key = issue["key"]
+
+        # Find transition ID for target status
+        transition_id = self._find_transition_id(issue_key, target_status)
+        if not transition_id:
+            return issue, f"Cannot transition task '{title}' to {target_status} (transition not available)"
+
+        # Perform transition
+        self._transition_issue(issue_key, transition_id)
+
+        return issue, f"Task '{title}' status set to {target_status}."
+
+    def _find_transition_id(self, issue_key, target_status):
+        """Find transition ID for target status."""
+        transitions = self._get_transitions(issue_key)
+        for transition in transitions:
+            if transition["to"]["name"] == target_status:
+                return transition["id"]
+        return None
+
+    def _get_transitions(self, issue_key):
+        """Get available transitions for an issue."""
+        result = self._make_request("GET", f"/issue/{issue_key}/transitions")
+        return result.get("transitions", []) if result else []
+
+    def _transition_issue(self, issue_key, transition_id):
+        """Transition an issue to a new status."""
+        data = {"transition": {"id": transition_id}}
+        return self._make_request("POST", f"/issue/{issue_key}/transitions", data=data)
+
+    # ============================================================================
+    # Checklist Management
+    # ============================================================================
     def update_task_with_checklist(self, project_name, title, checklist_items):
         """Add or append checklist items as subtasks."""
         # Find the parent issue by title
@@ -326,6 +314,9 @@ class JiraTaskManager:
 
         return subtask, f"Next unchecked checklist item for task '{title}': {item_name}"
 
+    # ============================================================================
+    # Task Querying and Filtering
+    # ============================================================================
     def get_tasks(self, project_name, filter_type="all"):
         """Retrieve tasks with filters like all, WIP, done."""
         # Build JQL based on filter
@@ -354,6 +345,37 @@ class JiraTaskManager:
 
         message = self._generate_result_message(filtered_tasks, filter_type, project_name)
         return filtered_tasks, message
+
+    def _search_issues(self, jql, fields=None, max_results=50):
+        """Search for issues using JQL."""
+        data = {
+            "jql": jql,
+            "maxResults": max_results,
+            "fields": fields or ["summary", "description", "status", "issuetype"],
+        }
+
+        result = self._make_request("POST", "/search", data=data)
+        return result.get("issues", []) if result else []
+
+    # ============================================================================
+    # Utility Methods
+    # ============================================================================
+    def _get_description_text(self, issue):
+        """Extract plain text from JIRA description format."""
+        description = issue["fields"].get("description")
+        if not description:
+            return ""
+
+        # Extract text from Atlassian Document Format
+        text_parts = []
+        if "content" in description:
+            for content_block in description["content"]:
+                if content_block.get("type") == "paragraph" and "content" in content_block:
+                    for text_node in content_block["content"]:
+                        if text_node.get("type") == "text":
+                            text_parts.append(text_node.get("text", ""))
+
+        return " ".join(text_parts)
 
     def _normalize_status(self, jira_status):
         """Normalize JIRA status to internal status format."""
@@ -385,41 +407,6 @@ class JiraTaskManager:
             return found_tasks_messages.get(
                 filter_type, f"Found {task_count} task(s) with filter '{filter_type}' in project '{project_name}'"
             )
-
-    def get_task_status(self, project_name, title):
-        """Get the current status of a task."""
-        jql = f'project = {self.project_key} AND summary ~ "{title}"'
-        issues = self._search_issues(jql, max_results=1)
-
-        if not issues:
-            raise TaskNotFoundError(project_name, title)
-
-        issue = issues[0]
-        status = issue["fields"]["status"]["name"]
-
-        return issue, f"Task '{title}' status: {status}"
-
-    def set_task_status(self, project_name, title, target_status):
-        """Set a specific status for a task."""
-        # Find the issue by title
-        jql = f'project = {self.project_key} AND summary ~ "{title}"'
-        issues = self._search_issues(jql, max_results=1)
-
-        if not issues:
-            raise TaskNotFoundError(project_name, title)
-
-        issue = issues[0]
-        issue_key = issue["key"]
-
-        # Find transition ID for target status
-        transition_id = self._find_transition_id(issue_key, target_status)
-        if not transition_id:
-            return issue, f"Cannot transition task '{title}' to {target_status} (transition not available)"
-
-        # Perform transition
-        self._transition_issue(issue_key, transition_id)
-
-        return issue, f"Task '{title}' status set to {target_status}."
 
     def delete_all_tasks(self, project_name: str) -> str:
         """Delete all tasks in a project."""
