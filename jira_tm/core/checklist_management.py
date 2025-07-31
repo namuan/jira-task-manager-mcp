@@ -1,6 +1,6 @@
 from .connection import JiraConnection
 from .constants import ISSUE_TYPE_SUBTASK, STATUS_DONE
-from .exceptions import TaskNotFoundError, ChecklistNotFoundError, ChecklistItemNotFoundError
+from .exceptions import ChecklistItemNotFoundError, ChecklistNotFoundError, TaskNotFoundError
 
 
 class ChecklistManager:

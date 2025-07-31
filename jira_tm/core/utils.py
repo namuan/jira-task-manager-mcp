@@ -1,4 +1,4 @@
-from .constants import STATUS_TODO, STATUS_IN_PROGRESS, STATUS_DONE
+from .constants import STATUS_DONE, STATUS_IN_PROGRESS
 
 
 def normalize_status(jira_status):

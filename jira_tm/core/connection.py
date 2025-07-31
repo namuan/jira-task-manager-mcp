@@ -1,9 +1,8 @@
-import os
 import requests
 from dotenv import load_dotenv
 from requests.auth import HTTPBasicAuth
 
-from .constants import JIRA_SERVER_URL, JIRA_USERNAME, JIRA_API_TOKEN, JIRA_PROJECT_KEY
+from .constants import JIRA_API_TOKEN, JIRA_PROJECT_KEY, JIRA_SERVER_URL, JIRA_USERNAME
 
 load_dotenv()
 

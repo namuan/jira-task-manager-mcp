@@ -1,4 +1,5 @@
 import datetime
+
 from .connection import JiraConnection
 from .constants import ISSUE_TYPE_TASK, STATUS_TODO
 from .exceptions import TaskNotFoundError
@@ -30,7 +31,9 @@ class CoreTaskOperations:
 
     def get_next_task(self, project_name):
         """Retrieve the next available task not in progress or completed."""
-        jql = f'project = {self.connection.project_key} AND status = "{STATUS_TODO}" ORDER BY priority DESC, created ASC'
+        jql = (
+            f'project = {self.connection.project_key} AND status = "{STATUS_TODO}" ORDER BY priority DESC, created ASC'
+        )
         issues = self.connection._search_issues(jql, max_results=1)
 
         if issues:

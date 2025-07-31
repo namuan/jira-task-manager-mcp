@@ -1,6 +1,5 @@
 from .connection import JiraConnection
-from .constants import STATUS_IN_PROGRESS, STATUS_DONE
-from .exceptions import TaskNotFoundError
+from .constants import STATUS_DONE, STATUS_IN_PROGRESS
 
 
 class TaskQueryManager:

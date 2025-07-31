@@ -1,5 +1,5 @@
 from .connection import JiraConnection
-from .constants import STATUS_IN_PROGRESS, STATUS_DONE
+from .constants import STATUS_DONE, STATUS_IN_PROGRESS
 from .exceptions import TaskNotFoundError
 
 
