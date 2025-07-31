@@ -2,9 +2,7 @@
 
 LLM Task management System that integrates as an MCP Server and uses JIRA for managing tasks/issues.
 
-![](assets/jira-task-manager-mcp-screenshot.png)
-
-See [Demo Video](https://x.com/namuan_twt/status/1949216924765753409)
+[//]: # (TODO: Add Image/Demo Video)
 
 ## Features
 
