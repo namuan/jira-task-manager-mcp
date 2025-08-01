@@ -2,7 +2,7 @@
 
 LLM Task management System that integrates as an MCP Server and uses JIRA for managing tasks/issues.
 
-[//]: # (TODO: Add Image/Demo Video)
+[//]: # "TODO: Add Image/Demo Video"
 
 ## Features
 

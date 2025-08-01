@@ -17,4 +17,3 @@ __pycache__/
 !LICENSE
 !tox.ini
 !.env.example
-!*.md
